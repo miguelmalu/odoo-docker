@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="providers" name="OAuth Linkedin Provider">
+            <t t-set="base_url" t-value="env['ir.config_parameter'].sudo().get_param('web.base.url')"/>
+            <t t-set="linkedin_auth_enabled_conf" t-value="env['ir.config_parameter'].sudo().get_param('linkedin_auth')"/>
+            <t t-if="linkedin_auth_enabled_conf">
+                <em t-attf-class="d-block text-center text-muted small my-#{len(providers) if len(providers) &lt; 3 else 3}">- or -</em>
+                <div class="o_auth_oauth_providers list-group mt-1 mb-1 text-left">
+                    <a class="list-group-item list-group-item-action py-2" t-attf-href="https://www.linkedin.com/oauth/v2/authorization?response_type=code&amp;client_id=77hn2b5he74sal&amp;redirect_uri={{base_url}}%2Fauth_oauth%2Flinkedin&amp;scope=r_liteprofile+r_emailaddress+r_basicprofile">
+                        <i t-attf-class="fa fa-fw fa-sign-in text-primary"/>
+                        <t t-esc="'Linkedin'"/>
+                    </a>
+                </div>
+            </t>
+        </template>
+
+        <template id="login" inherit_id="web.login" name="OAuth Login buttons">
+            <xpath expr="//form" position="before">
+                <t t-set="form_small" t-value="True" t-if="len(providers) &gt; 2"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_login_auth')]" position="inside">
+                <t t-call="linkedin_app.providers"/>
+            </xpath>
+        </template>
+
+        <template id="signup" inherit_id="auth_signup.signup" name="OAuth Signup buttons">
+            <xpath expr="//form" position="before">
+                <t t-set="form_small" t-value="True"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_login_auth')]" position="inside">
+                <t t-call="linkedin_app.providers"/>
+            </xpath>
+        </template>
+
+        <template id="reset_password" inherit_id="auth_signup.reset_password" name="OAuth Reset Password buttons">
+            <xpath expr="//div[hasclass('o_login_auth')]" position="inside">
+                <t t-call="linkedin_app.providers"/>
+            </xpath>
+        </template>
+    </data>
+</odoo>

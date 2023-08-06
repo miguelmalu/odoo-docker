@@ -1,0 +1,5 @@
+pysftp
+paramiko
+boto3
+botocore
+pretty_bad_protocol

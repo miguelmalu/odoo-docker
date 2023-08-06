@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <data>
+        <record id="default_linkedin_email" model="ir.config_parameter">
+            <field name="key">linkedin_email</field>
+            <field name="value">argdevelop1@gmail.com</field>
+        </record>
+        <record id="default_linkedin_password" model="ir.config_parameter">
+            <field name="key">linkedin_password</field>
+            <field name="value">123!unite</field>
+        </record>
+        <record id="default_linkedin_client_id" model="ir.config_parameter">
+            <field name="key">linkedin_client_id</field>
+            <field name="value">77hn2b5he74sal</field>
+        </record>
+        <record id="default_linkedin_secret_id" model="ir.config_parameter">
+            <field name="key">linkedin_secret_id</field>
+            <field name="value">bWbTAG5CzFXTgSJh</field>
+        </record>
+    </data>
+</odoo>

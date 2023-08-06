@@ -1,0 +1,89 @@
+version: '3.8'
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /etc/nginx/certs
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+
+  # acme-companion:
+  #   image: nginxproxy/acme-companion
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - /etc/acme.sh
+  #   volumes_from:
+  #     - nginx-proxy:rw
+  #   environment:
+  #     - DEFAULT_EMAIL=miguel.mateos@estudiantat.upc.edu
+
+  odoo:
+    #build: .
+    image: odoo:16.0
+    restart: unless-stopped
+    #ports:
+      #- 8069:8069
+    volumes:
+      - odoo:/var/lib/odoo
+      - ./odoo.conf:/etc/odoo/odoo.conf
+      - ./addons:/mnt/extra-addons
+      #- ./backups:/var/lib/odoo/backups
+    environment:
+      - VIRTUAL_PORT=8069
+      - VIRTUAL_HOST=odoo.local
+      #- VIRTUAL_HOST=aupa-dev.mooo.com
+      #- LETSENCRYPT_HOST=aupa.mooo.com
+      - HOST=postgres
+      #- ODOO_COMMAND= --update all --stop-after-init --load=base,web,openupgrade_framework
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    #ports:
+      #- 5432:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data/pgdata
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=postgres
+      - PGDATA=/var/lib/postgresql/data/pgdata
+
+  minio:
+    image: minio/minio
+    #ports:
+      #- "9000:9000"
+    volumes:
+      - minio:/data
+    environment:
+      - VIRTUAL_PORT=9000
+      - VIRTUAL_HOST=minio.local
+      #- VIRTUAL_HOST=aupa-minio.mooo.com
+      #- LETSENCRYPT_HOST=aupa-minio.mooo.com
+      - "MINIO_ROOT_USER=${MINIO_ROOT_USER}"
+      - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}"
+    command: server /data
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set minio http://minio:9000 \$MINIO_ROOT_USER \$MINIO_ROOT_PASSWORD;
+      /usr/bin/mc mb minio/bucket;
+      exit 0;
+      "
+
+volumes:
+  odoo:
+  postgres:
+  minio:
+  #migration:
