@@ -1,5 +1,6 @@
 pysftp
 paramiko
+cryptography
 boto3
 botocore
 pretty_bad_protocol

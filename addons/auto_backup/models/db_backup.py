@@ -13,13 +13,7 @@ import odoo
 import logging
 _logger = logging.getLogger(__name__)
 
-try:
-    import paramiko
-except ImportError:
-    raise ImportError(
-        'This module needs paramiko to automatically write backups to the FTP through SFTP. '
-        'Please install paramiko on your system. (sudo pip3 install paramiko)')
-
+import boto3
 
 class DbBackup(models.Model):
     _name = 'db.backup'
@@ -45,35 +39,31 @@ class DbBackup(models.Model):
                                        "If you fill in 5 the backups will be removed after 5 days.",
                                   required=True)
 
-    # Columns for external server (SFTP)
-    sftp_write = fields.Boolean('Write to external server with sftp',
+    # Columns for external server (S3)
+    s3_write = fields.Boolean('Write to external server (S3)',
                                 help="If you check this option you can specify the details needed to write to a remote "
-                                     "server with SFTP.")
-    sftp_path = fields.Char('Path external server',
-                            help='The location to the folder where the dumps should be written to. For example '
-                                 '/odoo/backups/.\nFiles will then be written to /odoo/backups/ on your remote server.')
-    sftp_host = fields.Char('IP Address SFTP Server',
-                            help='The IP address from your remote server. For example 192.168.0.1')
-    sftp_port = fields.Integer('SFTP Port', help='The port on the FTP server that accepts SSH/SFTP calls.', default=22)
-    sftp_user = fields.Char('Username SFTP Server',
-                            help='The username where the SFTP connection should be made with. This is the user on the '
-                                 'external server.')
-    sftp_password = fields.Char('Password User SFTP Server',
-                                help='The password from the user where the SFTP connection should be made with. This '
-                                     'is the password from the user on the external server.')
-    days_to_keep_sftp = fields.Integer('Remove SFTP after x days',
-                                       help='Choose after how many days the backup should be deleted from the FTP '
+                                     "server (S3).")
+    s3_endpoint_url = fields.Char('S3 endpoint URL',
+                            help='For example http://minio:9000')
+    s3_bucket_name = fields.Char('S3 bucket name',
+                        help='Your S3 bucket name.')
+    s3_access_key = fields.Char('S3 access key',
+                        help='Your S3 access key.')
+    s3_secret_key = fields.Char('S3 secret key',
+                        help='Your S3 secret key.')
+    days_to_keep_s3 = fields.Integer('Remove S3 after x days',
+                                       help='Choose after how many days the backup should be deleted from the S3 '
                                             'server. For example:\nIf you fill in 5 the backups will be removed after '
-                                            '5 days from the FTP server.',
+                                            '5 days from the S3 server.',
                                        default=30)
-    send_mail_sftp_fail = fields.Boolean('Auto. E-mail on backup fail',
+    """ send_mail_s3_fail = fields.Boolean('Auto. E-mail on backup fail',
                                          help='If you check this option you can choose to automaticly get e-mailed '
                                               'when the backup to the external server failed.')
     email_to_notify = fields.Char('E-mail to notify',
                                   help='Fill in the e-mail where you want to be notified that the backup failed on '
-                                       'the FTP.')
+                                       'the S3.') """
 
-    def test_sftp_connection(self, context=None):
+    """ def test_sftp_connection(self, context=None):
         self.ensure_one()
 
         # Check if there is a success or fail and write messages
@@ -111,7 +101,7 @@ class DbBackup(models.Model):
         if has_failed:
             raise Warning(message_title + '\n\n' + message_content + "%s" % str(error))
         else:
-            raise Warning(message_title + '\n\n' + message_content)
+            raise Warning(message_title + '\n\n' + message_content) """
 
     @api.model
     def schedule_backup(self):
@@ -139,113 +129,43 @@ class DbBackup(models.Model):
                 _logger.debug("Exact error from the exception: %s", str(error))
                 continue
 
-            # Check if user wants to write to SFTP or not.
-            if rec.sftp_write is True:
-                try:
-                    # Store all values in variables
-                    dir = rec.folder
-                    path_to_write_to = rec.sftp_path
-                    ip_host = rec.sftp_host
-                    port_host = rec.sftp_port
-                    username_login = rec.sftp_user
-                    password_login = rec.sftp_password
-                    _logger.debug('sftp remote path: %s', path_to_write_to)
+            # Upload the backup file to S3 if S3 configuration is present
+            if rec.s3_write is True:
+                s3 = boto3.client('s3', aws_access_key_id=rec.s3_access_key, aws_secret_access_key=rec.s3_secret_key, endpoint_url=rec.s3_endpoint_url)
+                s3.upload_file(file_path, rec.s3_bucket_name, bkp_file)
 
+                # Check if user wants to remove old backups from S3
+                if rec.days_to_keep_s3 > 0:
                     try:
-                        s = paramiko.SSHClient()
-                        s.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                        s.connect(ip_host, port_host, username_login, password_login, timeout=20)
-                        sftp = s.open_sftp()
-                    except Exception as error:
-                        _logger.critical('Error connecting to remote server! Error: %s', str(error))
+                        objects = s3.list_objects_v2(Bucket=rec.s3_bucket_name)['Contents']
+                        for obj in objects:
+                            if bkp_file in obj['Key']:
+                                timestamp = obj['LastModified']
+                                createtime = datetime.datetime.fromtimestamp(timestamp.timestamp())
+                                now = datetime.datetime.now()
+                                delta = now - createtime
+                                if delta.days >= rec.days_to_keep_s3:
+                                    s3.delete_object(Bucket=rec.s3_bucket_name, Key=obj['Key'])
+                    except Exception as e:
+                        _logger.error('Error while removing old backups from S3: %s', str(e))
 
-                    try:
-                        sftp.chdir(path_to_write_to)
-                    except IOError:
-                        # Create directory and subdirs if they do not exist.
-                        current_directory = ''
-                        for dirElement in path_to_write_to.split('/'):
-                            current_directory += dirElement + '/'
+                        """ if rec.send_mail_sftp_fail:
                             try:
-                                sftp.chdir(current_directory)
-                            except:
-                                _logger.info('(Part of the) path didn\'t exist. Creating it now at %s',
-                                             current_directory)
-                                # Make directory and then navigate into it
-                                sftp.mkdir(current_directory, 777)
-                                sftp.chdir(current_directory)
-                                pass
-                    sftp.chdir(path_to_write_to)
-                    # Loop over all files in the directory.
-                    for f in os.listdir(dir):
-                        if rec.name in f:
-                            fullpath = os.path.join(dir, f)
-                            if os.path.isfile(fullpath):
-                                try:
-                                    sftp.stat(os.path.join(path_to_write_to, f))
-                                    _logger.debug(
-                                        'File %s already exists on the remote FTP Server ------ skipped', fullpath)
-                                # This means the file does not exist (remote) yet!
-                                except IOError:
-                                    try:
-                                        sftp.put(fullpath, os.path.join(path_to_write_to, f))
-                                        _logger.info('Copying File % s------ success', fullpath)
-                                    except Exception as err:
-                                        _logger.critical(
-                                            'We couldn\'t write the file to the remote server. Error: %s', str(err))
-
-                    # Navigate in to the correct folder.
-                    sftp.chdir(path_to_write_to)
-
-                    _logger.debug("Checking expired files")
-                    # Loop over all files in the directory from the back-ups.
-                    # We will check the creation date of every back-up.
-                    for file in sftp.listdir(path_to_write_to):
-                        if rec.name in file:
-                            # Get the full path
-                            fullpath = os.path.join(path_to_write_to, file)
-                            # Get the timestamp from the file on the external server
-                            timestamp = sftp.stat(fullpath).st_mtime
-                            createtime = datetime.datetime.fromtimestamp(timestamp)
-                            now = datetime.datetime.now()
-                            delta = now - createtime
-                            # If the file is older than the days_to_keep_sftp (the days to keep that the user filled in
-                            # on the Odoo form it will be removed.
-                            if delta.days >= rec.days_to_keep_sftp:
-                                # Only delete files, no directories!
-                                if ".dump" in file or '.zip' in file:
-                                    _logger.info("Delete too old file from SFTP servers: %s", file)
-                                    sftp.unlink(file)
-                    # Close the SFTP session.
-                    sftp.close()
-                    s.close()
-                except Exception as e:
-                    try:
-                        sftp.close()
-                        s.close()
-                    except:
-                        pass
-                    _logger.error('Exception! We couldn\'t back up to the FTP server. Here is what we got back '
-                                  'instead: %s', str(e))
-                    # At this point the SFTP backup failed. We will now check if the user wants
-                    # an e-mail notification about this.
-                    if rec.send_mail_sftp_fail:
-                        try:
-                            ir_mail_server = self.env['ir.mail_server'].search([], order='sequence asc', limit=1)
-                            message = "Dear,\n\nThe backup for the server " + rec.host + " (IP: " + rec.sftp_host + \
-                                      ") failed. Please check the following details:\n\nIP address SFTP server: " + \
-                                      rec.sftp_host + "\nUsername: " + rec.sftp_user + \
-                                      "\n\nError details: " + tools.ustr(e) + \
-                                      "\n\nWith kind regards"
-                            catch_all_domain = self.env["ir.config_parameter"].sudo().get_param("mail.catchall.domain")
-                            response_mail = "auto_backup@%s" % catch_all_domain if catch_all_domain else self.env.user.partner_id.email
-                            msg = ir_mail_server.build_email(response_mail, [rec.email_to_notify],
-                                                             "Backup from " + rec.host + "(" + rec.sftp_host +
-                                                             ") failed",
-                                                             message)
-                            ir_mail_server.send_email(msg)
-                        except Exception:
-                            pass
+                                ir_mail_server = self.env['ir.mail_server'].search([], order='sequence asc', limit=1)
+                                message = "Dear,\n\nThe backup for the server " + rec.host + " (IP: " + rec.sftp_host + \
+                                        ") failed. Please check the following details:\n\nIP address SFTP server: " + \
+                                        rec.sftp_host + "\nUsername: " + rec.sftp_user + \
+                                        "\n\nError details: " + tools.ustr(e) + \
+                                        "\n\nWith kind regards"
+                                catch_all_domain = self.env["ir.config_parameter"].sudo().get_param("mail.catchall.domain")
+                                response_mail = "auto_backup@%s" % catch_all_domain if catch_all_domain else self.env.user.partner_id.email
+                                msg = ir_mail_server.build_email(response_mail, [rec.email_to_notify],
+                                                                "Backup from " + rec.host + "(" + rec.sftp_host +
+                                                                ") failed",
+                                                                message)
+                                ir_mail_server.send_email(msg)
+                            except Exception:
+                                pass """
 
             # Remove all old files (on local server) in case this is configured..
             if rec.autoremove:

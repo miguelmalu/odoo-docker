@@ -1,0 +1,92 @@
+name: Deploy Docker Compose - SSH
+
+# This was an example of how to do things, without a runner
+
+on:
+  workflow_dispatch:  # This event triggers the workflow manually
+  #push:
+    #branches:
+      #- master # Change this to the branch you want to trigger deployments from
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Initial Setup
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          #DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          #DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          if [ ! -f "$HOME/.ssh/setup_completed" ]; then
+            echo "Setup required"
+            
+            if [ -z "$SSH_PRIVATE_KEY" ]; then
+              # Generate an RSA key pair
+              ssh-keygen -t rsa -b 4096 -N '' -f $HOME/.ssh/id_rsa
+              chmod 600 $HOME/.ssh/id_rsa
+
+              # Save the private key as a GitHub secret (SSH_PRIVATE_KEY)
+              echo "::set-secret name=SSH_PRIVATE_KEY::$(cat $HOME/.ssh/id_rsa)"
+
+              # Print the public key and save it in a variable
+              PUB_KEY=$(cat $HOME/.ssh/id_rsa.pub)
+              echo "Public Key:"
+              echo "$PUB_KEY"
+            fi
+            
+            cat $HOME/.ssh/id_rsa
+            
+            # Add remote server's SSH host key to known hosts
+            mkdir -p $HOME/.ssh
+            ssh-keyscan 161.35.39.32 >> $HOME/.ssh/known_hosts
+            
+            # Check connection and exit if not public key in remote
+            if ! ssh -oPasswordAuthentication=no master_nrjcrmpzyh@161.35.39.32 "echo 'Connection test' 2>&1"; then
+              echo "Public key needs to be added to the remote server's authorized_keys file"
+              exit 1 
+            fi
+            
+            # SSH into the server, install Docker and Docker Compose
+            # User and IP (user@your_server_ip) could also be passed as a parameter
+            ssh master_nrjcrmpzyh@161.35.39.32 "
+              sudo apt-get update
+              sudo apt-get install -y docker.io docker-compose
+              sudo usermod -aG docker $USER
+              sudo systemctl enable docker
+              sudo systemctl start docker
+
+              # SSH into the server and check if the 'odoo' folder exists, if not, create it
+              mkdir -p ~/odoo
+            "
+
+            # Mark initial setup as completed
+            touch $HOME/.ssh/setup_completed          
+          
+          else
+            echo "Setup not required"
+          fi
+
+
+      - name: Deploy to Server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          # Copy the entire repository to the server (adjust the server IP and path accordingly)
+          # This should be a Git login and pull, because now, it is just a copy, not delete or synchronize
+          scp -r $GITHUB_WORKSPACE/* master_nrjcrmpzyh@161.35.39.32:~/odoo/
+
+          # SSH into the server and run Docker Hub login and Docker Compose commands
+          ssh master_nrjcrmpzyh@161.35.39.32 "
+            #docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+            cd ~/odoo
+            docker-compose pull
+            docker-compose up -d
+            # Run a script to ...
+            #chmod +x script.sh
+            #./script.sh
+          "

@@ -1,7 +1,9 @@
 version: '3.8'
 services:
   nginx-proxy:
-    image: jwilder/nginx-proxy
+    build:
+      context: .
+      dockerfile: nginx-proxy.Dockerfile
     restart: unless-stopped
     ports:
       - 80:80
@@ -19,8 +21,7 @@ services:
   #     - /etc/acme.sh
   #   volumes_from:
   #     - nginx-proxy:rw
-  #   environment:
-  #     - DEFAULT_EMAIL=miguel.mateos@estudiantat.upc.edu
+  #   env_file: .env
 
   odoo:
     #build: .
@@ -33,13 +34,12 @@ services:
       - ./odoo.conf:/etc/odoo/odoo.conf
       - ./addons:/mnt/extra-addons
       #- ./backups:/var/lib/odoo/backups
+    env_file: .env
     environment:
       - VIRTUAL_PORT=8069
-      - VIRTUAL_HOST=odoo.local
-      #- VIRTUAL_HOST=aupa-dev.mooo.com
-      #- LETSENCRYPT_HOST=aupa.mooo.com
-      - HOST=postgres
-      #- ODOO_COMMAND= --update all --stop-after-init --load=base,web,openupgrade_framework
+      - VIRTUAL_HOST=${ODOO_ENDPOINT}
+      #- LETSENCRYPT_HOST=${ODOO_ENDPOINT}
+      #- ODOO_COMMAND= --update all --stop-after-init
     depends_on:
       - postgres
 
@@ -50,26 +50,21 @@ services:
       #- 5432:5432
     volumes:
       - postgres:/var/lib/postgresql/data/pgdata
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=postgres
-      - PGDATA=/var/lib/postgresql/data/pgdata
+    env_file: .env
 
   minio:
     image: minio/minio
     #ports:
-      #- "9000:9000"
+      #- 9000:9000
+      #- 9001:9001
     volumes:
       - minio:/data
+    env_file: .env
     environment:
       - VIRTUAL_PORT=9000
-      - VIRTUAL_HOST=minio.local
-      #- VIRTUAL_HOST=aupa-minio.mooo.com
-      #- LETSENCRYPT_HOST=aupa-minio.mooo.com
-      - "MINIO_ROOT_USER=${MINIO_ROOT_USER}"
-      - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}"
-    command: server /data
+      - VIRTUAL_HOST=${MINIO_ENDPOINT}
+      #- LETSENCRYPT_HOST=${MINIO_ENDPOINT}
+    command: server /data --console-address ":9001"
 
   createbuckets:
     image: minio/mc
@@ -86,4 +81,3 @@ volumes:
   odoo:
   postgres:
   minio:
-  #migration:

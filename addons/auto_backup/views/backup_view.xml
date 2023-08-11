@@ -19,36 +19,34 @@
                         <field name="days_to_keep" attrs="{'invisible': [('autoremove','=',False)]}"/>
                     </group>
                     <group name="allow_stfp" col="4" colspan="4">
-                        <separator col="2" string="SFTP"/>
+                        <separator col="2" string="S3"/>
                     </group>
                     <div style="width:50%;border-radius:10px;margin: 10px 0px;padding:15px 10px 15px 10px;
                         background-repeat: no-repeat;background-position: 10px center;color: #9F6000;
                         background-color: #FEEFB3;"
-                         attrs="{'invisible': [('sftp_write','=',False)]}">
+                         attrs="{'invisible': [('s3_write','=',False)]}">
                         <b>Warning:</b>
-                        Use SFTP with caution! This writes files to external servers under the path you specify.
+                        Use S3 with caution! This writes files to external servers under the path you specify.
                     </div>
-                    <group name="sftp_configuration">
-                        <field name="sftp_write"/>
-                        <field name="sftp_host"
-                               attrs="{'invisible':[('sftp_write', '=', False)],'required':[('sftp_write', '=', True)]}"/>
-                        <field name="sftp_port"
-                               attrs="{'invisible':[('sftp_write', '=', False)],'required':[('sftp_write', '=', True)]}"/>
-                        <field name="sftp_user"
-                               attrs="{'invisible':[('sftp_write', '=', False)], 'required':[('sftp_write', '=', True)]}"/>
-                        <field name="sftp_password"
-                               attrs="{'invisible':[('sftp_write', '=', False)],'required': [('sftp_write', '=', True)]}"
+                    <group name="s3_configuration">
+                        <field name="s3_write"/>
+                        <field name="s3_endpoint_url"
+                               attrs="{'invisible':[('s3_write', '==', False)],'required':[('s3_write', '==', True)]}"
+                               placeholder="For example http://minio:9000"/>
+                        <field name="s3_bucket_name"
+                               attrs="{'invisible':[('s3_write', '=', False)],'required':[('s3_write', '=', True)]}"/>
+                        <field name="s3_access_key"
+                               attrs="{'invisible':[('s3_write', '=', False)], 'required':[('s3_write', '=', True)]}"/>
+                        <field name="s3_secret_key"
+                               attrs="{'invisible':[('s3_write', '=', False)],'required': [('s3_write', '=', True)]}"
                                password="True"/>
-                        <field name="sftp_path"
-                               attrs="{'invisible':[('sftp_write', '==', False)],'required':[('sftp_write', '==', True)]}"
-                               placeholder="For example: /odoo/backups/"/>
-                        <field name="days_to_keep_sftp"
-                               attrs="{'invisible': [('sftp_write', '=', False)], 'required': [('sftp_write', '=', True)]}"/>
-                        <field name="send_mail_sftp_fail" attrs="{'invisible': [('sftp_write','=',False)]}"/>
+                        <field name="days_to_keep_s3"
+                               attrs="{'invisible': [('s3_write', '=', False)], 'required': [('s3_write', '=', True)]}"/>
+                        <!-- <field name="send_mail_s3_fail" attrs="{'invisible': [('s3_write','=',False)]}"/>
                         <field name="email_to_notify"
-                               attrs="{'invisible':['|',('send_mail_sftp_fail', '==', False), ('sftp_write', '=', False)], 'required': [('send_mail_sftp_fail', '=', True)]}"/>
-                        <button name="test_sftp_connection" type="object"
-                                attrs="{'invisible': [('sftp_write','=',False)]}" string="Test SFTP Connection"/>
+                               attrs="{'invisible':['|',('send_mail_s3_fail', '==', False), ('s3_write', '=', False)], 'required': [('send_mail_s3_fail', '=', True)]}"/>
+                        <button name="test_s3_connection" type="object"
+                                attrs="{'invisible': [('s3_write','=',False)]}" string="Test S3 Connection"/> -->
                     </group>
                     <separator string="Help" colspan="2"/>
                     <div name="configuration_details">
@@ -88,7 +86,7 @@
                 <field name='name'/>
                 <field name='folder'/>
                 <field name="autoremove"/>
-                <field name="sftp_host"/>
+                <field name="s3_endpoint_url"/>
             </tree>
         </field>
     </record>

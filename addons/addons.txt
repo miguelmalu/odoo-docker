@@ -1,0 +1,14 @@
+odoo-addon-portal-odoo-debranding
+odoo-addons-oca-crm
+odoo-addons-oca-hr
+odoo-addons-oca-partner-contact
+odoo-addons-oca-project
+odoo-addons-oca-reporting-engine
+odoo-addons-oca-server-brand
+odoo-addons-oca-social
+odoo-addons-oca-timesheet
+odoo-addons-oca-web
+odoo-addons-oca-website
+odoo-addons-oca-multi-company
+odoo-addons-oca-server-tools
+odoo-addons-oca-server-auth

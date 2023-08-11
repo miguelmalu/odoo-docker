@@ -1,0 +1,46 @@
+name: Deploy Docker Compose
+
+on:
+  workflow_dispatch:  # This event triggers the workflow manually
+  #push:
+    #branches:
+      #- master # Change this to the branch you want to trigger deployments from
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Improve this, there must be some Docker related actions as build, push, run an login
+      - name: Initial Setup
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/setup_completed" ]; then
+            # Install Docker and Docker Compose
+            sudo apt-get update
+            sudo apt-get install -y docker.io docker-compose
+            sudo usermod -aG docker $USER
+            sudo systemctl enable docker
+            sudo systemctl start docker
+            
+            # Mark initial setup as completed
+            touch $GITHUB_WORKSPACE/setup_completed
+          else
+            echo "Setup not required"
+          fi
+
+      - name: Deploy to Server
+        #env:
+          #DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          #DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          # Run Docker Hub login and Docker Compose commands
+          #docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+          #docker-compose pull
+          #docker-compose build
+          docker-compose up -d
+          # Run a script to ...
+          #chmod +x script.sh
+          #./script.sh

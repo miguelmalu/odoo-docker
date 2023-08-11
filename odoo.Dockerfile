@@ -16,8 +16,5 @@ RUN set -e; \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Expose the Odoo ports (if needed)
-EXPOSE 8069 8071
-
 # Set the entrypoint to start Odoo
 ENTRYPOINT ["odoo"]
