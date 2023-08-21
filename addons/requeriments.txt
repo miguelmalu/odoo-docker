@@ -4,3 +4,4 @@ cryptography
 boto3
 botocore
 pretty_bad_protocol
+prometheus-client

@@ -21,7 +21,7 @@ def install_module_dependencies(module_path):
 
 if __name__ == '__main__':
     # Replace '/path/to/modules' with the path to the directory containing your custom modules
-    modules_path = '/path/to/modules'
+    modules_path = '../addons'
 
     for module_name in os.listdir(modules_path):
         module_path = os.path.join(modules_path, module_name)

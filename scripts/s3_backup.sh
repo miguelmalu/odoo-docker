@@ -1,16 +1,22 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 
+# Get the absolute path of the directory containing the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Navigate to the parent directory
+cd "${SCRIPT_DIR}/.."
+
 # Load environment variables from .env
 source .env
 
-# odoo vars
-BACKUP_DIR=$HOME/odoo/odoo_backups
+# Odoo vars
+BACKUP_DIR=backups
 ODOO_DATABASE=$ODOO_DB
 ADMIN_PASSWORD=$ODOO_ADMIN_PASSWORD
 ODOO_ENDPOINT_URL=http://$ODOO_ENDPOINT
 
-# s3 vars
+# S3 vars
 MINIO_BUCKET=$MINIO_BUCKET
 MINIO_ROOT_USER=$MINIO_ROOT_USER
 MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD
