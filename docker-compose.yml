@@ -42,13 +42,12 @@ services:
       - odoo:/var/lib/odoo
       - ./config/odoo.conf:/etc/odoo/odoo.conf
       - ./addons:/mnt/extra-addons
-      #- ./backups:/var/lib/odoo/backups
+      - ./backups:/var/lib/odoo/backups
     env_file: .env
     environment:
       - VIRTUAL_PORT=8069
       - VIRTUAL_HOST=${ODOO_ENDPOINT}
       #- LETSENCRYPT_HOST=${ODOO_ENDPOINT}
-      #- ODOO_COMMAND= --update all --stop-after-init
     depends_on:
       - postgres
     networks:

@@ -1,5 +1,6 @@
 *.pyc
 */__pycache__/*
 backups
+*.zip
 #.env
 #odoo.conf
