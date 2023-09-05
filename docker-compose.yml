@@ -11,25 +11,25 @@ services:
       - 443:443
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - /etc/nginx/certs
+      - certs:/etc/nginx/certs:ro
       - /etc/nginx/vhost.d
       - /usr/share/nginx/html
     networks:
       - extern
       - nginx
 
-  # acme-companion:
-  #   image: nginxproxy/acme-companion
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #     - /etc/acme.sh
-  #   volumes_from:
-  #     - nginx-proxy:rw
-  #   env_file: .env
-  #  depends_on:
-  #    - nginx-proxy
-  #  networks:
-  #    - nginx
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: acme-companion
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs:rw
+      - /etc/acme.sh
+    volumes_from:
+      - nginx-proxy
+    env_file: .env
+    depends_on:
+      - nginx-proxy
 
   odoo:
     #build: .
@@ -47,7 +47,7 @@ services:
     environment:
       - VIRTUAL_PORT=8069
       - VIRTUAL_HOST=${ODOO_ENDPOINT}
-      #- LETSENCRYPT_HOST=${ODOO_ENDPOINT}
+      - LETSENCRYPT_HOST=${ODOO_ENDPOINT}
     depends_on:
       - postgres
     networks:
@@ -81,7 +81,7 @@ services:
     environment:
       - VIRTUAL_PORT=9000
       - VIRTUAL_HOST=${MINIO_ENDPOINT}
-      #- LETSENCRYPT_HOST=${MINIO_ENDPOINT}
+      - LETSENCRYPT_HOST=${MINIO_ENDPOINT}
     command: server /data --console-address ":9001"
     networks:
       - extern
@@ -115,7 +115,7 @@ services:
     environment:
       - VIRTUAL_PORT=3000
       - VIRTUAL_HOST=${GRAFANA_ENDPOINT}
-      #- LETSENCRYPT_HOST=${GRAFANA_ENDPOINT}
+      - LETSENCRYPT_HOST=${GRAFANA_ENDPOINT}
     networks:
       - extern
       - grafana
@@ -247,6 +247,7 @@ networks:
 volumes:
   odoo:
   postgres:
+  certs:
   minio:
   grafana:
   prometheus:

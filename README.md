@@ -1,1 +1,1 @@
-# Odoo 16 - Docker
+# Odoo - Docker
